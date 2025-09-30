@@ -11,12 +11,13 @@ print(f"Database path: {DB_PATH}")
 
 mcp = FastMCP("ExpenseTracker")
 
-async def init_db():  # Changed: added async
+def init_db():  # Keep as sync for initialization
     try:
-        # Changed: sqlite3.connect → aiosqlite.connect
-        async with aiosqlite.connect(DB_PATH) as c:  # Changed: added async
-            await c.execute("PRAGMA journal_mode=WAL")  # Changed: added await
-            await c.execute("""
+        # Use synchronous sqlite3 just for initialization
+        import sqlite3
+        with sqlite3.connect(DB_PATH) as c:
+            c.execute("PRAGMA journal_mode=WAL")
+            c.execute("""
                 CREATE TABLE IF NOT EXISTS expenses(
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     date TEXT NOT NULL,
@@ -25,21 +26,17 @@ async def init_db():  # Changed: added async
                     subcategory TEXT DEFAULT '',
                     note TEXT DEFAULT ''
                 )
-            """)  # Changed: added await
+            """)
             # Test write access
-            await c.execute("INSERT OR IGNORE INTO expenses(date, amount, category) VALUES ('2000-01-01', 0, 'test')")  # Changed: added await
-            await c.execute("DELETE FROM expenses WHERE category = 'test'")  # Changed: added await
-            await c.commit()  # Changed: added await
+            c.execute("INSERT OR IGNORE INTO expenses(date, amount, category) VALUES ('2000-01-01', 0, 'test')")
+            c.execute("DELETE FROM expenses WHERE category = 'test'")
             print("Database initialized successfully with write access")
     except Exception as e:
         print(f"Database initialization error: {e}")
         raise
 
-# Initialize database when server starts
-@mcp.lifespan
-async def lifespan():
-    await init_db()
-    yield
+# Initialize database synchronously at module load
+init_db()
 
 @mcp.tool()
 async def add_expense(date, amount, category, subcategory="", note=""):  # Changed: added async
