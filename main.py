@@ -2,8 +2,6 @@ from fastmcp import FastMCP
 import os
 import aiosqlite  # Changed: sqlite3 → aiosqlite
 import tempfile
-import asyncio
-
 # Use temporary directory which should be writable
 TEMP_DIR = tempfile.gettempdir()
 DB_PATH = os.path.join(TEMP_DIR, "expenses.db")
@@ -37,8 +35,11 @@ async def init_db():  # Changed: added async
         print(f"Database initialization error: {e}")
         raise
 
-# Initialize database at module level
-asyncio.run(init_db())
+# Initialize database when server starts
+@mcp.lifespan
+async def lifespan():
+    await init_db()
+    yield
 
 @mcp.tool()
 async def add_expense(date, amount, category, subcategory="", note=""):  # Changed: added async
